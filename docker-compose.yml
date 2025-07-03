@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=http://server:5000/api
+    depends_on:
+      - server
+    networks:
+      - studio-booking-network
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/studio_booking
+      - JWT_SECRET=your_jwt_secret_key_here
+      - JWT_EXPIRY=24h
+      - SENDGRID_API_KEY=your_sendgrid_api_key_here
+      - STRIPE_SECRET_KEY=your_stripe_secret_key_here
+    depends_on:
+      - db
+      - redis
+    networks:
+      - studio-booking-network
+
+  db:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=studio_booking
+    networks:
+      - studio-booking-network
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - studio-booking-network
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - studio-booking-network
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  studio-booking-network:
+    driver: bridge
